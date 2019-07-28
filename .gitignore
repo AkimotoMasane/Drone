@@ -50,3 +50,13 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+*.list
+05_PG/Debug/makefile
+05_PG/Debug/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/subdir.mk
+05_PG/Debug/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk
+05_PG/Debug/Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/subdir.mk
+05_PG/Debug/Middlewares/Third_Party/FreeRTOS/Source/subdir.mk
+05_PG/Debug/objects.mk
+05_PG/Debug/sources.mk
+05_PG/Debug/Src/subdir.mk
+05_PG/Debug/Startup/subdir.mk
