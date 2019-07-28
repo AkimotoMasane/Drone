@@ -260,4 +260,4 @@ WWDG.Counter=127
 WWDG.IPParameters=Prescaler,Counter
 WWDG.Prescaler=WWDG_PRESCALER_8
 board=custom
-isbadioc=true
+isbadioc=false
