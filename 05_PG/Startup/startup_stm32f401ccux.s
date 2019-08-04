@@ -62,6 +62,19 @@ defined in linker script */
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
 
+  .equ GENERAL_PURPOSE_REGISTER_INIT, 0x00000000
+  .equ GENERAL_PURPOSE_REGISTER_CHECK, 0xA5A5A5A5
+
+  .equ SRAM_ADDRESS_START, 0x20000000
+  .equ SRAM_ADDRESS_END, 0x2000FFFF
+
+  .equ SRAM_INIT_DATA, 0x00000000
+  .equ SRAM_CHECK_DATA, 0xA5A5A5A5
+
+  /* system control block aircr register */
+  .equ SYSTEM_CONTROL_BLOCK_AIRCR, 0xE000ED0C
+  .equ REQUEST_SOFTWARE_RESET, 0x05FA0004
+
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -76,6 +89,99 @@ defined in linker script */
   .type  Reset_Handler, %function
 Reset_Handler:  
   ldr   sp, =_estack      /* set stack pointer */
+
+  /* disable interrupt */
+  /* PRIMASK = 1 */
+  cpsid i
+
+  /* register check */
+  ldr r0, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r0, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r0, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r1, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r1, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r1, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r2, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r2, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r2, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r3, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r3, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r3, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r4, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r4, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r4, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r5, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r5, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r5, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r6, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r6, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r6, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r7, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r7, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r7, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r8, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r8, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r8, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r9, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r9, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r9, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r10, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r10, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r10, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r11, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r11, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r11, =GENERAL_PURPOSE_REGISTER_INIT
+
+  ldr r12, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r12, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r12, =GENERAL_PURPOSE_REGISTER_INIT
+
+  /* r13 is stack pointer */
+
+  ldr r14, =GENERAL_PURPOSE_REGISTER_CHECK
+  cmp r14, GENERAL_PURPOSE_REGISTER_CHECK
+  bne CheckError
+  ldr r14, =GENERAL_PURPOSE_REGISTER_INIT
+
+  /* SRAM check */
+  /* SRAM 0x2000_0000 64Kbyte */
+  ldr	r0, =SRAM_ADDRESS_START		/* SRAM1の先頭アドレス */
+  ldr	r1, =SRAM_ADDRESS_END		/* SRAM1の終端アドレス */
+  ldr	r2, =SRAM_CHECK_DATA		/* SRAMに書き込みデータ */
+  ldr	r3, =SRAM_INIT_DATA			/* SRAM初期化 */
+CheckSRAM:
+  str	r2, [r0]					/* SRAMにチェック用のデータを書き込む */
+  ldr	r4, [r0]					/* SRAMに書き込んだデータを読み出す */
+  cmp	r2, r4						/* SRAMに書き込んだ値が正しく読み出せているか確認する */
+  bne	CheckError					/* SRAMの読み書きが正しくできないときは無限ループする */
+  str	r3, [r0]					/* SRAMをゼロで初期化する */
+  adds	r0, r0, #4					/* 次のアドレスへ */
+  cmp	r0, r1						/* SRAMの終端チェック */
+  bls	CheckSRAM					/* SRAMのチェックを続ける */
 
 /* Copy the data segment initializers from flash to SRAM */  
   movs  r1, #0
@@ -113,6 +219,14 @@ LoopFillZerobss:
   bl  main
   bx  lr    
 .size  Reset_Handler, .-Reset_Handler
+
+/* check error */
+CheckError:
+  /* software reset */
+  ldr r0, =SYSTEM_CONTROL_BLOCK_AIRCR
+  ldr r1, =REQUEST_SOFTWARE_RESET
+  str r1, [r0]
+  b CheckError
 
 /**
  * @brief  This is the code that gets called when the processor receives an 
