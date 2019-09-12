@@ -24,7 +24,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Sensor.h"
+#include "drvLSM6DSL.h"
+#include "SensorInterface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,11 +47,14 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
-IWDG_HandleTypeDef hiwdg;
-
-WWDG_HandleTypeDef hwwdg;
+SPI_HandleTypeDef hspi2;
 
 osThreadId_t defaultTaskHandle;
+osThreadId_t sensorInterfaceHandle;
+osThreadId_t drvLSM6DSLTaskHandle;
+osMessageQueueId_t sensorInterfaceQueueHandle;
+osSemaphoreId_t sensorInterfaceBinarySemHandle;
+osSemaphoreId_t drvLSM6DSLBinarySemHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,9 +63,10 @@ osThreadId_t defaultTaskHandle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_IWDG_Init(void);
-static void MX_WWDG_Init(void);
+static void MX_SPI2_Init(void);
 void StartDefaultTask(void *argument);
+void StartSensorInterfaceTask(void *argument);
+void StartDrvLSM6DSLTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -101,8 +107,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ADC1_Init();
-  MX_IWDG_Init();
-  MX_WWDG_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -113,6 +118,19 @@ int main(void)
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* definition and creation of sensorInterfaceBinarySem */
+  const osSemaphoreAttr_t sensorInterfaceBinarySem_attributes = {
+    .name = "sensorInterfaceBinarySem"
+  };
+  sensorInterfaceBinarySemHandle = osSemaphoreNew(1, 1, &sensorInterfaceBinarySem_attributes);
+
+  /* definition and creation of drvLSM6DSLBinarySem */
+  const osSemaphoreAttr_t drvLSM6DSLBinarySem_attributes = {
+    .name = "drvLSM6DSLBinarySem"
+  };
+  drvLSM6DSLBinarySemHandle = osSemaphoreNew(1, 1, &drvLSM6DSLBinarySem_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -120,6 +138,13 @@ int main(void)
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* definition and creation of sensorInterfaceQueue */
+  const osMessageQueueAttr_t sensorInterfaceQueue_attributes = {
+    .name = "sensorInterfaceQueue"
+  };
+  sensorInterfaceQueueHandle = osMessageQueueNew (8, sizeof(uint32_t), &sensorInterfaceQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -133,6 +158,22 @@ int main(void)
     .stack_size = 128
   };
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* definition and creation of sensorInterface */
+  const osThreadAttr_t sensorInterface_attributes = {
+    .name = "sensorInterface",
+    .priority = (osPriority_t) osPriorityAboveNormal,
+    .stack_size = 128
+  };
+  sensorInterfaceHandle = osThreadNew(StartSensorInterfaceTask, NULL, &sensorInterface_attributes);
+
+  /* definition and creation of drvLSM6DSLTask */
+  const osThreadAttr_t drvLSM6DSLTask_attributes = {
+    .name = "drvLSM6DSLTask",
+    .priority = (osPriority_t) osPriorityNormal,
+    .stack_size = 128
+  };
+  drvLSM6DSLTaskHandle = osThreadNew(StartDrvLSM6DSLTask, NULL, &drvLSM6DSLTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -169,9 +210,8 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 16;
@@ -248,60 +288,40 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief IWDG Initialization Function
+  * @brief SPI2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_IWDG_Init(void)
+static void MX_SPI2_Init(void)
 {
 
-  /* USER CODE BEGIN IWDG_Init 0 */
+  /* USER CODE BEGIN SPI2_Init 0 */
 
-  /* USER CODE END IWDG_Init 0 */
+  /* USER CODE END SPI2_Init 0 */
 
-  /* USER CODE BEGIN IWDG_Init 1 */
+  /* USER CODE BEGIN SPI2_Init 1 */
 
-  /* USER CODE END IWDG_Init 1 */
-  hiwdg.Instance = IWDG;
-  hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
-  hiwdg.Init.Reload = 4095;
-  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN IWDG_Init 2 */
+  /* USER CODE BEGIN SPI2_Init 2 */
 
-  /* USER CODE END IWDG_Init 2 */
-
-}
-
-/**
-  * @brief WWDG Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_WWDG_Init(void)
-{
-
-  /* USER CODE BEGIN WWDG_Init 0 */
-
-  /* USER CODE END WWDG_Init 0 */
-
-  /* USER CODE BEGIN WWDG_Init 1 */
-
-  /* USER CODE END WWDG_Init 1 */
-  hwwdg.Instance = WWDG;
-  hwwdg.Init.Prescaler = WWDG_PRESCALER_8;
-  hwwdg.Init.Window = 64;
-  hwwdg.Init.Counter = 127;
-  hwwdg.Init.EWIMode = WWDG_EWI_DISABLE;
-  if (HAL_WWDG_Init(&hwwdg) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN WWDG_Init 2 */
-
-  /* USER CODE END WWDG_Init 2 */
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -390,14 +410,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB13 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PA8 PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -455,14 +467,87 @@ void StartDefaultTask(void *argument)
     
     
     
+    
+    
 
   /* USER CODE BEGIN 5 */
+	uint32_t i = 0u;
+
   /* Infinite loop */
   for(;;)
   {
+	i++;
+
     osDelay(1);
   }
   /* USER CODE END 5 */ 
+}
+
+/* USER CODE BEGIN Header_StartSensorInterfaceTask */
+/**
+* @brief Function implementing the sensorInterface thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSensorInterfaceTask */
+void StartSensorInterfaceTask(void *argument)
+{
+  /* USER CODE BEGIN StartSensorInterfaceTask */
+	uint32_t i = 0u;
+
+  /* Infinite loop */
+	//SensorInterfaceTask();
+	for (;;) {
+
+		i++;
+
+		osDelay(1);
+	}
+  /* USER CODE END StartSensorInterfaceTask */
+}
+
+/* USER CODE BEGIN Header_StartDrvLSM6DSLTask */
+/**
+* @brief Function implementing the drvLSM6DSLTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDrvLSM6DSLTask */
+void StartDrvLSM6DSLTask(void *argument)
+{
+  /* USER CODE BEGIN StartDrvLSM6DSLTask */
+	uint32_t i = 0u;
+
+  /* Infinite loop */
+	//LSM6DSLTask();
+	for (;;) {
+
+		i++;
+
+		osDelay(1);
+	}
+  /* USER CODE END StartDrvLSM6DSLTask */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**
