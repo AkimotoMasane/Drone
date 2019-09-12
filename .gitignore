@@ -60,3 +60,7 @@ dkms.conf
 05_PG/Debug/sources.mk
 05_PG/Debug/Src/subdir.mk
 05_PG/Debug/Startup/subdir.mk
+05_PG/Debug/Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
+05_PG/Debug/Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
+05_PG/Debug/Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
+05_PG/Debug/Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
