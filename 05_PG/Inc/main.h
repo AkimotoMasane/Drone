@@ -58,6 +58,40 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LPS22HB_CS_Pin GPIO_PIN_13
+#define LPS22HB_CS_GPIO_Port GPIOC
+#define USB_Monitor_Pin GPIO_PIN_14
+#define USB_Monitor_GPIO_Port GPIOC
+#define Reserved_Pin GPIO_PIN_15
+#define Reserved_GPIO_Port GPIOC
+#define BLE_IRQ_Pin GPIO_PIN_4
+#define BLE_IRQ_GPIO_Port GPIOA
+#define BLE_CS_Pin GPIO_PIN_0
+#define BLE_CS_GPIO_Port GPIOB
+#define Battery_Pin GPIO_PIN_1
+#define Battery_GPIO_Port GPIOB
+#define BLE_RSTN_Pin GPIO_PIN_2
+#define BLE_RSTN_GPIO_Port GPIOB
+#define I2C2_SCL_Pin GPIO_PIN_10
+#define I2C2_SCL_GPIO_Port GPIOB
+#define LIS2MDL_CS_Pin GPIO_PIN_12
+#define LIS2MDL_CS_GPIO_Port GPIOB
+#define ReservedB14_Pin GPIO_PIN_14
+#define ReservedB14_GPIO_Port GPIOB
+#define LSM6DS33_CS_Pin GPIO_PIN_8
+#define LSM6DS33_CS_GPIO_Port GPIOA
+#define USART1_TX_Pin GPIO_PIN_9
+#define USART1_TX_GPIO_Port GPIOA
+#define USART1_RX_Pin GPIO_PIN_10
+#define USART1_RX_GPIO_Port GPIOA
+#define ReservedA15_Pin GPIO_PIN_15
+#define ReservedA15_GPIO_Port GPIOA
+#define I2C2_SDA_Pin GPIO_PIN_3
+#define I2C2_SDA_GPIO_Port GPIOB
+#define LD2_Pin GPIO_PIN_4
+#define LD2_GPIO_Port GPIOB
+#define LD1_Pin GPIO_PIN_5
+#define LD1_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
