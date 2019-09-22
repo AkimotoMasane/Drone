@@ -43,7 +43,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-osThreadId_t defaultTaskHandle;
+osThreadId defaultTaskHandle;
+osMessageQId spiQueueHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -51,7 +52,7 @@ osThreadId_t defaultTaskHandle;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-void StartDefaultTask(void *argument);
+void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -95,8 +96,6 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  osKernelInitialize();
-
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -109,18 +108,19 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* definition and creation of spiQueue */
+  osMessageQDef(spiQueue, 8, uint32_t);
+  spiQueueHandle = osMessageCreate(osMessageQ(spiQueue), NULL);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  const osThreadAttr_t defaultTask_attributes = {
-    .name = "defaultTask",
-    .priority = (osPriority_t) osPriorityNormal,
-    .stack_size = 128
-  };
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -209,17 +209,24 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+void StartDefaultTask(void const * argument)
 {
     
     
     
 
   /* USER CODE BEGIN 5 */
+	osEvent event;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	event = osMessageGet(spiQueueHandle, 100u);
+
+	if (osOK == event.status) {
+    	osDelay(1);
+	} else {
+		osDelay(1);
+	}
   }
   /* USER CODE END 5 */ 
 }
