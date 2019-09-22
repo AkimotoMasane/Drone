@@ -12,7 +12,7 @@ STマイクロエレクトロニクス社のドローンキット「STEVAL-DRONE
 | 安定化電源     |                |            |
 | IDE            | STM32CubeIDE   | 1.0.2      |
 | エミュレータ   | ST-LINK/V2     |            |
-| FreeRTOS       | CMSIS_V2       | -          |
+| FreeRTOS       | CMSIS_V1       | -          |
 
 # Note
 
