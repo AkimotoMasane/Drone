@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Battery.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,6 +46,7 @@
 ADC_HandleTypeDef hadc1;
 
 osThreadId defaultTaskHandle;
+osThreadId batteryTaskHandle;
 osMessageQId spiQueueHandle;
 /* USER CODE BEGIN PV */
 
@@ -56,6 +57,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 void StartDefaultTask(void const * argument);
+void StartBatteryTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -125,6 +127,10 @@ int main(void)
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of batteryTask */
+  osThreadDef(batteryTask, StartBatteryTask, osPriorityBelowNormal, 0, 64);
+  batteryTaskHandle = osThreadCreate(osThread(batteryTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -364,6 +370,7 @@ void StartDefaultTask(void const * argument)
     
     
     
+    
 
   /* USER CODE BEGIN 5 */
 	osEvent event;
@@ -379,6 +386,24 @@ void StartDefaultTask(void const * argument)
 	}
   }
   /* USER CODE END 5 */ 
+}
+
+/* USER CODE BEGIN Header_StartBatteryTask */
+/**
+* @brief Function implementing the batteryTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBatteryTask */
+void StartBatteryTask(void const * argument)
+{
+  /* USER CODE BEGIN StartBatteryTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    BatteryTask();
+  }
+  /* USER CODE END StartBatteryTask */
 }
 
 /**
