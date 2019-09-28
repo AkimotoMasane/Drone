@@ -20,7 +20,10 @@ extern ADC_HandleTypeDef hadc1;
 #define BATTERY_AD_CONVERSION_TIMEOUT	(10u)
 #define BATTERY_AD_CONVERSION_INTERVAL	(1000u)
 
-#define BATTERY_AD_MAX_VALUE	(0x0FFFu)
+#define AD_REFERENCE_VOLTAGE	(33u)		// reference voltage 3.3V
+#define BATTERY_AD_MAX_VALUE	(0x0FFFu)	// 12bits
+#define BAT_RUP					(10u)		// Pull-up resistor value [Kohm]
+#define BAT_RDW					(20u)		// Pull-Down resistor value [Kohm]
 
 
 typedef struct {
