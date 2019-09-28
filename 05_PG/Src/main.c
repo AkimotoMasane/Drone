@@ -25,6 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Battery.h"
+#include "Led.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +48,10 @@ ADC_HandleTypeDef hadc1;
 
 osThreadId defaultTaskHandle;
 osThreadId batteryTaskHandle;
+osThreadId spiTaskHandle;
+osThreadId ledTaskHandle;
 osMessageQId spiQueueHandle;
+osMessageQId ledQueueHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,6 +62,8 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 void StartDefaultTask(void const * argument);
 void StartBatteryTask(void const * argument);
+void StartSpiTask(void const * argument);
+void StartLedTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -119,18 +125,30 @@ int main(void)
   osMessageQDef(spiQueue, 8, uint32_t);
   spiQueueHandle = osMessageCreate(osMessageQ(spiQueue), NULL);
 
+  /* definition and creation of ledQueue */
+  osMessageQDef(ledQueue, 4, uint32_t);
+  ledQueueHandle = osMessageCreate(osMessageQ(ledQueue), NULL);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityLow, 0, 64);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of batteryTask */
   osThreadDef(batteryTask, StartBatteryTask, osPriorityBelowNormal, 0, 64);
   batteryTaskHandle = osThreadCreate(osThread(batteryTask), NULL);
+
+  /* definition and creation of spiTask */
+  osThreadDef(spiTask, StartSpiTask, osPriorityNormal, 0, 128);
+  spiTaskHandle = osThreadCreate(osThread(spiTask), NULL);
+
+  /* definition and creation of ledTask */
+  osThreadDef(ledTask, StartLedTask, osPriorityBelowNormal, 0, 64);
+  ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -371,19 +389,18 @@ void StartDefaultTask(void const * argument)
     
     
     
+    
+    
 
   /* USER CODE BEGIN 5 */
-	osEvent event;
+	uint32_t voltage;
+
   /* Infinite loop */
   for(;;)
   {
-	event = osMessageGet(spiQueueHandle, 100u);
+	  voltage = GetBattery();
 
-	if (osOK == event.status) {
-    	osDelay(1);
-	} else {
-		osDelay(1);
-	}
+	  osDelay(1000);
   }
   /* USER CODE END 5 */ 
 }
@@ -404,6 +421,42 @@ void StartBatteryTask(void const * argument)
     BatteryTask();
   }
   /* USER CODE END StartBatteryTask */
+}
+
+/* USER CODE BEGIN Header_StartSpiTask */
+/**
+* @brief Function implementing the spiTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSpiTask */
+void StartSpiTask(void const * argument)
+{
+  /* USER CODE BEGIN StartSpiTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartSpiTask */
+}
+
+/* USER CODE BEGIN Header_StartLedTask */
+/**
+* @brief Function implementing the ledTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLedTask */
+void StartLedTask(void const * argument)
+{
+  /* USER CODE BEGIN StartLedTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	LedTask();
+  }
+  /* USER CODE END StartLedTask */
 }
 
 /**
