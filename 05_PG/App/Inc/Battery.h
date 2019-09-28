@@ -11,6 +11,7 @@
 
 /* Exported functions --------------------------------------------------------*/
 void BatteryTask(void);
+uint32_t GetBattery(void);
 
 
 #endif /* INC_BATTERY_H_ */
