@@ -13,12 +13,12 @@
 #include "p_Battery.h"
 
 
-/* Private variables ---------------------------------------------------------*/
+/* Private variables --------------------------------------------------------- */
 static stBatteryBuffer g_Battery;
 
 
 /**
- *
+ * @brief battery task
  */
 void BatteryTask(void)
 {
@@ -81,13 +81,14 @@ void BatteryTask(void)
 uint32_t GetBattery(void)
 {
 	uint32_t value;
-	uint32_t percent;
+	uint32_t voltage;
 
 	value = g_Battery.battery;
 
 	// 12bits
+	voltage = ((value * AD_REFERENCE_VOLTAGE) * (BAT_RUP + BAT_RDW)) / (BATTERY_AD_MAX_VALUE * BAT_RDW);
 
-	return value;
+	return voltage;
 }
 
 
