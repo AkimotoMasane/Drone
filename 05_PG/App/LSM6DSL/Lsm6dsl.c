@@ -17,7 +17,10 @@
 
 
 static AngularRate g_AngularRate;
+static AngularRate g_PreAngularRate;
+
 static LinearAcceleration g_LinearAcceleration;
+static LinearAcceleration g_PreLinearAcceleration;
 
 
 /**
@@ -28,11 +31,10 @@ void Lsm6dslTask(void)
 	static uint8_t addr;
 	static uint8_t sendData[16u];
 	static uint8_t receiveData[16u];
+	eErrorCode result;
 
 	// initialize task
 	initLsm6dslTask();
-
-	eErrorCode result;
 
 	memset(sendData, 0, 16);
 	memset(receiveData, 0, 16);
@@ -93,6 +95,9 @@ void Lsm6dslTask(void)
 
 		addr = LSM6DSL_READ | LSM6DSL_OUTX_L_G;
 
+		int16_t pitch, roll, yaw;
+		int16_t x, y, z;
+
 		// task
 		for (;;) {
 
@@ -100,29 +105,47 @@ void Lsm6dslTask(void)
 
 			if (eErrorCodeOK == result) {
 
-				g_AngularRate.pitch = (uint16_t)receiveData[0];
-				g_AngularRate.pitch |= (((uint16_t)receiveData[1]) << 8u);
+				pitch = (int16_t)(((uint16_t)receiveData[1] << 8u) | (uint16_t)receiveData[0]);
+				roll = (int16_t)(((uint16_t)receiveData[3] << 8u) | (uint16_t)receiveData[2]);
+				yaw = (int16_t)(((uint16_t)receiveData[5] << 8u) | (uint16_t)receiveData[4]);
 
-				g_AngularRate.roll = (uint16_t)receiveData[2];
-				g_AngularRate.roll |= (((uint16_t)receiveData[3]) << 8u);
+				g_AngularRate.pitch = ((int32_t)pitch * 875) / 100;
+				g_AngularRate.roll = ((int32_t)roll * 875) / 100;
+				g_AngularRate.yaw = ((int32_t)yaw * 875) / 100;
 
-				g_AngularRate.yaw = (uint16_t)receiveData[4];
-				g_AngularRate.yaw |= (((uint16_t)receiveData[5]) << 8u);
+				// rc filter
+				g_AngularRate.pitch = ((g_AngularRate.pitch * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreAngularRate.pitch * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
+				g_AngularRate.roll = ((g_AngularRate.roll * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreAngularRate.roll * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
+				g_AngularRate.yaw = ((g_AngularRate.yaw * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreAngularRate.yaw * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
 
-				g_LinearAcceleration.xaxis = (uint16_t)receiveData[6];
-				g_LinearAcceleration.xaxis |= (((uint16_t)receiveData[7]) << 8u);
+				// save previous value
+				g_PreAngularRate.pitch = g_AngularRate.pitch;
+				g_PreAngularRate.roll = g_AngularRate.roll;
+				g_PreAngularRate.yaw = g_AngularRate.yaw;
 
-				g_LinearAcceleration.yaxis = (uint16_t)receiveData[8];
-				g_LinearAcceleration.yaxis |= (((uint16_t)receiveData[9]) << 8u);
+				x = (int16_t)(((uint16_t)receiveData[7] << 8u) | (uint16_t)receiveData[6]);
+				y = (int16_t)(((uint16_t)receiveData[9] << 8u) | (uint16_t)receiveData[8]);
+				z = (int16_t)(((uint16_t)receiveData[11] << 8u) | (uint16_t)receiveData[10]);
 
-				g_LinearAcceleration.zaxis = (uint16_t)receiveData[10];
-				g_LinearAcceleration.zaxis |= (((uint16_t)receiveData[11]) << 8u);
+				g_LinearAcceleration.xaxis = ((int32_t)x * 61) / 1000;
+				g_LinearAcceleration.yaxis = ((int32_t)y * 61) / 1000;
+				g_LinearAcceleration.zaxis = ((int32_t)z * 61) / 1000;
 
-				osDelay(100u);
+				// rc filter
+				g_LinearAcceleration.xaxis = ((g_LinearAcceleration.xaxis * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreLinearAcceleration.xaxis * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
+				g_LinearAcceleration.yaxis = ((g_LinearAcceleration.yaxis * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreLinearAcceleration.yaxis * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
+				g_LinearAcceleration.zaxis = ((g_LinearAcceleration.zaxis * (ANGULAR_RATE_COFFICIENT_100PER - ANGULAR_RATE_COFFICIENT)) + (g_PreLinearAcceleration.zaxis * ANGULAR_RATE_COFFICIENT)) / ANGULAR_RATE_COFFICIENT_100PER;
+
+				// save previous value
+				g_PreLinearAcceleration.xaxis = g_LinearAcceleration.xaxis;
+				g_PreLinearAcceleration.yaxis = g_LinearAcceleration.yaxis;
+				g_PreLinearAcceleration.zaxis = g_LinearAcceleration.zaxis;
+
+				osDelay(LSM6DSL_UPDATE_CYCLE);
 
 			} else {
 
-				osDelay(100u);
+				osDelay(LSM6DSL_UPDATE_CYCLE);
 			}
 		}
 
@@ -130,7 +153,7 @@ void Lsm6dslTask(void)
 
 		for (;;) {
 
-			osDelay(100);
+			osDelay(LSM6DSL_SYSTEM_ERROR_WAIT);
 		}
 	}
 }
@@ -141,25 +164,33 @@ void Lsm6dslTask(void)
  */
 static void initLsm6dslTask(void)
 {
-	g_AngularRate.pitch = 0u;
-	g_AngularRate.roll = 0u;
-	g_AngularRate.yaw = 0u;
+	g_AngularRate.pitch = 0;
+	g_AngularRate.roll = 0;
+	g_AngularRate.yaw = 0;
 
-	g_LinearAcceleration.xaxis = 0u;
-	g_LinearAcceleration.yaxis = 0u;
-	g_LinearAcceleration.zaxis = 0u;
+	g_PreAngularRate.pitch = 0;
+	g_PreAngularRate.roll = 0;
+	g_PreAngularRate.yaw = 0;
+
+	g_LinearAcceleration.xaxis = 0;
+	g_LinearAcceleration.yaxis = 0;
+	g_LinearAcceleration.zaxis = 0;
+
+	g_PreLinearAcceleration.xaxis = 0;
+	g_PreLinearAcceleration.yaxis = 0;
+	g_PreLinearAcceleration.zaxis = 0;
 }
 
 
 /**
- * @brief call back
+ * @brief call back function
  */
 static void Lsd6dslCallback(const HAL_StatusTypeDef status)
 {
 	int32_t preSignal;
 
 	// set signal
-	preSignal = osSignalSet(lsm6dslTaskHandle, 0x00000001);
+	preSignal = osSignalSet(lsm6dslTaskHandle, LSM6DSL_COMPLETE_SPI);
 }
 
 
@@ -186,11 +217,11 @@ static eErrorCode exeLsm6dslInterface(const uint8_t addr, const uint16_t slen, c
 	transmit.pRxBuffer	= pReceive;
 	transmit.pCallback	= Lsd6dslCallback;
 
-	status = osMessagePut(spiQueueHandle, (uint32_t)&transmit, 100u);
+	status = osMessagePut(spiQueueHandle, (uint32_t)&transmit, LSM6DSL_SYSTEM_CALL_WAIT);
 
 	if (osOK == status) {
 
-		event = osSignalWait(0x00000001, 100u);
+		event = osSignalWait(LSM6DSL_COMPLETE_SPI, LSM6DSL_SYSTEM_CALL_WAIT);
 
 		if (osEventSignal == event.status) {
 
