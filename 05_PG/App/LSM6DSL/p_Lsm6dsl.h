@@ -114,20 +114,39 @@ extern osMessageQId spiQueueHandle;
 #define LSM6DSL_Z_OFS_USR					(0x75u)
 
 
+// filter coefficient
+#define ANGULAR_RATE_COFFICIENT					(2)
+#define ANGULAR_RATE_COFFICIENT_100PER			(10)
+#define LINEAR_ACCELERATION_COFFICIENT			(1)
+#define LINEAR_ACCELERATION_COFFICIENT_100PER	(10)
+
+
+// update cycle
+#define LSM6DSL_UPDATE_CYCLE	(10u)
+
+// wait time
+#define LSM6DSL_SYSTEM_CALL_WAIT	(100u)
+#define LSM6DSL_SYSTEM_ERROR_WAIT	(100u)
+
+
+// flag
+#define LSM6DSL_COMPLETE_SPI	(0x00000001)
+
+
 typedef struct {
 
-	uint16_t pitch;
-	uint16_t roll;
-	uint16_t yaw;
+	int32_t pitch;
+	int32_t roll;
+	int32_t yaw;
 
-} AngularRate ;
+} AngularRate;
 
 
 typedef struct {
 
-	uint16_t xaxis;
-	uint16_t yaxis;
-	uint16_t zaxis;
+	int32_t xaxis;
+	int32_t yaxis;
+	int32_t zaxis;
 
 } LinearAcceleration;
 
