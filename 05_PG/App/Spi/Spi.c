@@ -281,14 +281,14 @@ static void ReadSPI(uint8_t *pData)
 
 		while (SPI_FLAG_RXNE != (hspi2.Instance->SR & SPI_FLAG_RXNE)) {
 
-			__asm("nop\n");
+			osDelay(1);
 		}
 
 		*pData = (uint8_t)hspi2.Instance->DR;
 
 		while (SPI_FLAG_BSY == (hspi2.Instance->SR & SPI_FLAG_BSY)) {
 
-			__asm("nop\n");
+			osDelay(1);
 		}
 
 		SPI_1LINE_TX(&hspi2);
@@ -331,7 +331,7 @@ static void ReadMultipleSPI(const uint8_t length, uint8_t *pData)
 
 			} else {
 
-				__asm("nop\n");
+				__NOP();
 			}
 		}
 
