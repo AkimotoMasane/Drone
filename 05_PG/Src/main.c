@@ -26,6 +26,8 @@
 /* USER CODE BEGIN Includes */
 #include "Battery.h"
 #include "Led.h"
+#include "Spi.h"
+#include "Lsm6dsl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,10 +48,13 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+SPI_HandleTypeDef hspi2;
+
 osThreadId defaultTaskHandle;
 osThreadId batteryTaskHandle;
 osThreadId spiTaskHandle;
 osThreadId ledTaskHandle;
+osThreadId lsm6dslTaskHandle;
 osMessageQId spiQueueHandle;
 osMessageQId ledQueueHandle;
 /* USER CODE BEGIN PV */
@@ -60,10 +65,12 @@ osMessageQId ledQueueHandle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_SPI2_Init(void);
 void StartDefaultTask(void const * argument);
 void StartBatteryTask(void const * argument);
 void StartSpiTask(void const * argument);
 void StartLedTask(void const * argument);
+void StartLsm6dslTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -104,6 +111,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ADC1_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -150,13 +158,17 @@ int main(void)
   osThreadDef(ledTask, StartLedTask, osPriorityBelowNormal, 0, 64);
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
 
+  /* definition and creation of lsm6dslTask */
+  osThreadDef(lsm6dslTask, StartLsm6dslTask, osPriorityAboveNormal, 0, 64);
+  lsm6dslTaskHandle = osThreadCreate(osThread(lsm6dslTask), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
   osKernelStart();
-  
+ 
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
@@ -263,6 +275,45 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
+
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 7;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
+	SPI_1LINE_TX(&hspi2);
+	__HAL_SPI_ENABLE(&hspi2);
+  /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -339,14 +390,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB13 PB15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
   /*Configure GPIO pins : LSM6DS33_CS_Pin USART1_TX_Pin USART1_RX_Pin ReservedA15_Pin */
   GPIO_InitStruct.Pin = LSM6DS33_CS_Pin|USART1_TX_Pin|USART1_RX_Pin|ReservedA15_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -385,22 +428,12 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
-    
-    
-    
-    
-    
-    
-
   /* USER CODE BEGIN 5 */
-	uint32_t voltage;
 
   /* Infinite loop */
   for(;;)
   {
-	  voltage = GetBattery();
-
-	  osDelay(1000);
+	  osDelay(100);
   }
   /* USER CODE END 5 */ 
 }
@@ -436,7 +469,7 @@ void StartSpiTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	SpiTask();
   }
   /* USER CODE END StartSpiTask */
 }
@@ -457,6 +490,24 @@ void StartLedTask(void const * argument)
 	LedTask();
   }
   /* USER CODE END StartLedTask */
+}
+
+/* USER CODE BEGIN Header_StartLsm6dslTask */
+/**
+* @brief Function implementing the lsm6dslTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLsm6dslTask */
+void StartLsm6dslTask(void const * argument)
+{
+  /* USER CODE BEGIN StartLsm6dslTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	  Lsm6dslTask();
+  }
+  /* USER CODE END StartLsm6dslTask */
 }
 
 /**
